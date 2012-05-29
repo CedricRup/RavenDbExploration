@@ -2,19 +2,25 @@ using System;
 using System.Collections.Generic;
 using FizzWare.NBuilder;
 using NUnit.Framework;
+using Raven.Client;
+using Raven.Client.Document;
 using Raven.Client.Embedded;
+using Raven.Client.Extensions;
 
 namespace RavenDbTest
 {
     public class RavenDbTest
     {
-        protected EmbeddableDocumentStore DocumentStore;
+        protected IDocumentStore DocumentStore;
 
         [SetUp]
         public void Setup()
         {
             DocumentStore = new EmbeddableDocumentStore {RunInMemory = true};
+            //DocumentStore = new DocumentStore(){Url = "http://localhost:8080/",DefaultDatabase = "Test"};
             DocumentStore.Initialize();
+            DocumentStore.DatabaseCommands.EnsureDatabaseExists("Test");
+            
             BuilderSetup.SetCreatePersistenceMethod<IList<Dummy>>(Persist);
             using (var session = DocumentStore.OpenSession())
             {

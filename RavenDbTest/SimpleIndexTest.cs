@@ -19,10 +19,30 @@ namespace RavenDbTest
             }
         }
 
+        public class NumberOfDummyWithCrash : AbstractIndexCreationTask<Dummy, TotalCrash>
+        {
+            public NumberOfDummyWithCrash()
+            {
+                Map = dummies => from dummy in dummies
+                                 select new TotalCrash() {NumberOfCrash = dummy.NumberOfCrash, NumberOfDummy = 1};
+
+                Reduce = results => from result in results
+                                    group result by result.NumberOfCrash
+                                    into g
+                                    select new
+                                               {
+                                                   NumberOfCrash = g.Key,
+                                                   NumberOfDummy = g.Sum(x => x.NumberOfDummy)
+                                               };
+
+
+            }
+        }
+
         [SetUp]
         public void SetupOfTest()
         {
-            IndexCreation.CreateIndexes(GetType().Assembly,DocumentStore);
+            IndexCreation.CreateIndexes(GetType().Assembly, DocumentStore);
         }
 
         [Test]
@@ -30,7 +50,7 @@ namespace RavenDbTest
         {
             Builder<Dummy>.CreateListOfSize(20)
                 .All()
-                .With(d=>d.NumberOfCrash = 5)
+                .With(d => d.NumberOfCrash = 5)
                 .Random(5)
                 .With(d => d.NumberOfCrash = 17)
                 .Persist();
@@ -40,13 +60,19 @@ namespace RavenDbTest
                 RavenQueryStatistics stats;
                 var result = session.Query<Dummy, DummyIndexByCrashNumber>()
                     .Statistics(out stats)
-                    .Customize(c=>c.WaitForNonStaleResults())
-                    .Where( d => d.NumberOfCrash == 17)
+                    .Customize(c => c.WaitForNonStaleResults())
+                    .Where(d => d.NumberOfCrash == 17)
                     .ToList();
-                Assert.That(result.Count,Is.EqualTo(5));
+                Assert.That(result.Count, Is.EqualTo(5));
             }
         }
+
+
+
+        public class TotalCrash
+        {
+            public int NumberOfCrash { get; set; }
+            public int NumberOfDummy { get; set; }
+        }
     }
-
-
 }
