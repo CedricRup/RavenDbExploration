@@ -16,12 +16,13 @@ namespace RavenDbTest
         [SetUp]
         public void Setup()
         {
-            DocumentStore = new EmbeddableDocumentStore {RunInMemory = true};
-            //DocumentStore = new DocumentStore(){Url = "http://localhost:8080/",DefaultDatabase = "Test"};
+            //DocumentStore = new EmbeddableDocumentStore {RunInMemory = true};
+            DocumentStore = new DocumentStore(){Url = "http://localhost:8080/",DefaultDatabase = "Test"};
             DocumentStore.Initialize();
             DocumentStore.DatabaseCommands.EnsureDatabaseExists("Test");
             
             BuilderSetup.SetCreatePersistenceMethod<IList<Dummy>>(Persist);
+            BuilderSetup.SetCreatePersistenceMethod<IList<Crash>>(Persist);
             using (var session = DocumentStore.OpenSession())
             {
                 session.Store(new Dummy { Id  = "Cedric", CreationTime = new DateTime(1981, 8, 17), NumberOfCrash =  42 });

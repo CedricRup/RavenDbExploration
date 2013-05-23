@@ -1,5 +1,5 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
+using FizzWare.NBuilder;
 using NUnit.Framework;
 using Raven.Client.Indexes;
 using Raven.Client.Linq;
@@ -9,17 +9,17 @@ namespace RavenDbTest
     [TestFixture]
     public class IndexWithLiveTransform : RavenDbTest
     {
-        public class CrashByWithDummyByExperimentName : AbstractIndexCreationTask<Crash>
+        public class CrashWithDummyByDummyId : AbstractIndexCreationTask<Crash>
         {
-            public CrashByWithDummyByExperimentName()
+            public CrashWithDummyByDummyId()
             {
                 Map = crashes => from crash in crashes
-                                 select new { crash.ExperimentName };
+                                 select new { crash.DummiesId };
 
                 TransformResults = (database, crashes) =>
                                    from crash in crashes
                                    let dummies = database.Load<Dummy>(crash.DummiesId)
-                                   select new { crash.ExperimentName, Dummies = dummies };
+                                   select new {crash.ExperimentName, Dummies = dummies };
 
             }
         }
@@ -33,31 +33,26 @@ namespace RavenDbTest
         [Test]
         public void CanRetrieveDataFromIndexWithProjection()
         {
+
+            Builder<Crash>.CreateListOfSize(1000)
+                .TheFirst(200)
+                .With(c => c.DummiesId = new[] {"Zoe", "Cedric"})
+                .TheNext(800)
+                .With(c => c.DummiesId = new[] {"Arthur", "Cedric"}).Persist();
             
-
-            var crash = new Crash
-                            {
-                                DummiesId = new[] { "Cedric", "Zoe" },
-                                ExperimentName = "Trust",
-                                Id = "1",
-                                TimeOfExperiment = DateTime.Now
-
-                            };
-
 
             using (var session = DocumentStore.OpenSession())
             {
-                session.Store(crash);
-                session.SaveChanges();
-
                 RavenQueryStatistics stats;
-                var result = session.Query<Crash, CrashByWithDummyByExperimentName>()
+                var result = session.Query<Crash, CrashWithDummyByDummyId>()
                     .Statistics(out stats)
                     .Customize(c => c.WaitForNonStaleResults())
-                    .As<CrashWithDummies>()
-                    .ToList();
+                    .Where(c=>c.DummiesId.Any(id=> id=="Zoe"))
+                    .As<CrashWithDummies>().ToList();
+
+                Assert.That(stats.TotalResults,Is.EqualTo(200));
+                Assert.That(result,Has.Count.EqualTo(128));
                 
-                Assert.That(result.First().Dummies.Select(d=>d.NumberOfCrash),Is.EquivalentTo(new[]{42,5}));
             }
         }
     }

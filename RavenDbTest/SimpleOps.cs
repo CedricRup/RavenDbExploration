@@ -106,7 +106,7 @@ namespace RavenDbTest
         {
             using (var session = DocumentStore.OpenSession())
             {
-                var allDummies = session.Query<Dummy>().OrderBy(d => d.CreationTime).ToList();
+                var allDummies = session.Query<Dummy>().Where(d=>d.NumberOfCrash == 3).OrderBy(d => d.CreationTime).ToList();
                 var dates = allDummies.Select(d => d.CreationTime).ToList();
                 Assert.That(dates, Is.Ordered);
             }
